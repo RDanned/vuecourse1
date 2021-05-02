@@ -3,6 +3,7 @@ import {setItem} from '@/helpers/persistanceStorage'
 
 const state = {
   isSubmitting: false,
+  isLoading: false,
   currentUser: null,
   validationErrors: null,
   isLoggedIn: null,
@@ -17,7 +18,12 @@ export const mutationTypes = {
   //login
   loginStart: '[auth] loginStart',
   loginSuccess: '[auth] loginSuccess',
-  loginFailed: '[auth] loginFailed'
+  loginFailed: '[auth] loginFailed',
+
+  //login
+  getCurrentUserStart: '[auth] getCurrentUserStart',
+  getCurrentUserSuccess: '[auth] getCurrentUserSuccess',
+  getCurrentUserFailed: '[auth] getCurrentUserFailed'
 }
 
 const mutations = {
@@ -50,11 +56,46 @@ const mutations = {
     state.isSubmitting = false
     state.validationErrors = payload
   },
+
+  //getCurrentUser
+  [mutationTypes.getCurrentUserStart](state) {
+    state.isLoading = true
+  },
+  [mutationTypes.getCurrentUserSuccess](state, payload) {
+    state.isLoading = false
+    state.currentUser = payload
+    state.isLoggedIn = true
+  },
+  [mutationTypes.getCurrentUserFailed](state){
+    state.isLoading = false
+    state.isLoggedIn = false
+    state.currentUser = null
+  }
 }
+
 
 export const actionTypes = {
   register: '[auth] register',
   login: '[auth] login',
+  getCurrentUser: '[auth] getCurrentUser'
+}
+
+export const getterTypes = {
+  currentUser: '[auth] currentUser',
+  isLoggedIn: '[auth] isLoggedIn',
+  isAnonymous: '[auth] isAnonymous'
+}
+
+const getters = {
+  [getterTypes.currentUser]: state => {
+    return state.currentUser
+  },
+  [getterTypes.isLoggedIn]: state => {
+    return Boolean(state.isLoggedIn)
+  },
+  [getterTypes.isAnonymous]: state => {
+    return state.isLoggedIn === false
+  }
 }
 
 const actions = {
@@ -93,10 +134,29 @@ const actions = {
         })
     })
   },
+
+  [actionTypes.getCurrentUser](context) {
+    return new Promise((resolve) => {
+      context.commit(mutationTypes.getCurrentUserStart)
+      authApi
+        .getCurrentUser()
+        .then((response) => {
+          context.commit(
+            mutationTypes.getCurrentUserSuccess, 
+            response.data.user
+          )
+          resolve(response.data.user)
+        })
+        .catch(() => {
+          context.commit(mutationTypes.getCurrentUserFailed)
+        })
+    })
+  },
 }
 
 export default {
   state,
   mutations,
   actions,
+  getters
 }
